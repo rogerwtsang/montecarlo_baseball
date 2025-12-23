@@ -1,0 +1,118 @@
+# Baseball Monte Carlo - Project Structure
+
+```
+baseball-monte-carlo/
+├── README.md
+├── requirements.txt
+├── .gitignore
+├── config.py
+│
+├── data/
+│   ├── raw/              # Scraped data from pybaseball
+│   └── processed/        # Cleaned/calculated data
+│
+├── notebooks/
+│   ├── 01_data_exploration.ipynb
+│   ├── 02_probability_testing.ipynb
+│   └── 03_results_analysis.ipynb
+│
+├── src/
+│   ├── __init__.py
+│   │
+│   ├── data/
+│   │   ├── __init__.py
+│   │   ├── scraper.py           # pybaseball data acquisition
+│   │   ├── processor.py         # Clean and transform data
+│   │   └── league_averages.py   # Calculate fallback distributions
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── player.py            # Player dataclass/representation
+│   │   ├── probability.py       # Slash line → PA probabilities
+│   │   └── baserunning.py       # Deterministic advancement rules
+│   │
+│   ├── engine/
+│   │   ├── __init__.py
+│   │   ├── game_state.py        # Game state representation
+│   │   ├── inning.py            # Half-inning simulation
+│   │   └── game.py              # Full game simulation
+│   │
+│   ├── simulation/
+│   │   ├── __init__.py
+│   │   ├── season.py            # Season simulation
+│   │   └── batch.py             # Multiple iteration runner
+│   │
+│   ├── analysis/
+│   │   ├── __init__.py
+│   │   ├── metrics.py           # Statistical summary calculations
+│   │   ├── comparison.py        # Lineup comparison framework
+│   │   └── visualization.py     # Plotting functions
+│   │
+│   └── utils/
+│       ├── __init__.py
+│       └── helpers.py           # Utility functions
+│
+├── tests/
+│   ├── __init__.py
+│   ├── test_probability.py
+│   ├── test_baserunning.py
+│   ├── test_inning.py
+│   ├── test_game.py
+│   └── test_season.py
+│
+├── scripts/
+│   ├── validate_model.py        # Run validation against actual data
+│   ├── compare_lineups.py       # Compare different batting orders
+│   └── simulate_season.py       # Run single simulation
+│
+└── main.py                      # Primary entry point
+```
+
+## File Purposes
+
+### Root Level
+- **README.md**: Project description, setup instructions, usage
+- **requirements.txt**: Python dependencies
+- **.gitignore**: Ignore data files, cache, notebooks checkpoints
+- **config.py**: Constants, parameters, settings
+- **main.py**: Entry point for running simulations
+
+### data/
+- **raw/**: CSV/pickle files from pybaseball (git-ignored)
+- **processed/**: Cleaned player stats with calculated probabilities
+
+### notebooks/
+- Jupyter notebooks for exploration, testing, visualization
+- Not part of core codebase
+
+### src/data/
+- **scraper.py**: Functions to pull data using pybaseball
+- **processor.py**: Clean data, calculate derived stats
+- **league_averages.py**: Compute fallback distributions
+
+### src/models/
+- **player.py**: Player dataclass with stats and probabilities
+- **probability.py**: ISO-based hit distribution, slash line decomposition
+- **baserunning.py**: `advance_runners()` logic
+
+### src/engine/
+- **game_state.py**: GameState class/dataclass
+- **inning.py**: `simulate_half_inning()`
+- **game.py**: `simulate_game()`
+
+### src/simulation/
+- **season.py**: `simulate_season()`
+- **batch.py**: `run_simulations()` for N iterations
+
+### src/analysis/
+- **metrics.py**: Calculate mean, CI, distributions
+- **comparison.py**: Statistical tests between lineups
+- **visualization.py**: Plotting functions
+
+### tests/
+- Unit tests for each major component
+- pytest structure
+
+### scripts/
+- Standalone scripts for common tasks
+- Can import from src/ modules
