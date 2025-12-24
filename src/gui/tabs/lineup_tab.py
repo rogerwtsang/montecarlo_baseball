@@ -7,6 +7,9 @@ import pandas as pd
 from src.models.player import Player
 from src.gui.widgets import PlayerList, LineupBuilder, ConstraintDialog
 from src.gui.utils import ConstraintValidator, ConfigManager
+from src.data.scraper import get_player_batting_stats, prepare_player_stats
+from src.data.processor import prepare_roster
+import config
 
 
 class LineupTab(ttk.Frame):
@@ -37,6 +40,44 @@ class LineupTab(ttk.Frame):
         left_frame = ttk.LabelFrame(top_frame, text="Available Players", padding=10)
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
+        # Player scraping section
+        scrape_frame = ttk.LabelFrame(left_frame, text="Add Individual Player", padding=5)
+        scrape_frame.pack(fill=tk.X, pady=(0, 5))
+
+        # Note about positions
+        note_frame = ttk.Frame(left_frame)
+        note_frame.pack(fill=tk.X, pady=(0, 10))
+        note_label = ttk.Label(
+            note_frame,
+            text="Note: Position data not available from FanGraphs. Right-click a player to set position manually.",
+            font=('TkDefaultFont', 8),
+            foreground='gray'
+        )
+        note_label.pack()
+
+        # Player name entry
+        name_row = ttk.Frame(scrape_frame)
+        name_row.pack(fill=tk.X, pady=2)
+        ttk.Label(name_row, text="Player Name:").pack(side=tk.LEFT, padx=(0, 5))
+        self.player_name_var = tk.StringVar()
+        self.player_name_entry = ttk.Entry(name_row, textvariable=self.player_name_var, width=20)
+        self.player_name_entry.pack(side=tk.LEFT, padx=(0, 5))
+        self.player_name_entry.bind('<Return>', lambda e: self._scrape_player())
+
+        # Season selector
+        ttk.Label(name_row, text="Season:").pack(side=tk.LEFT, padx=(5, 5))
+        self.scrape_season_var = tk.IntVar(value=config.CURRENT_SEASON)
+        self.scrape_season_spin = ttk.Spinbox(name_row, from_=2015, to=2025, width=8, textvariable=self.scrape_season_var)
+        self.scrape_season_spin.pack(side=tk.LEFT)
+
+        # Scrape button
+        btn_row = ttk.Frame(scrape_frame)
+        btn_row.pack(fill=tk.X, pady=2)
+        self.scrape_btn = ttk.Button(btn_row, text="Search & Add Player", command=self._scrape_player, width=20)
+        self.scrape_btn.pack(side=tk.LEFT)
+        self.scrape_status_label = ttk.Label(btn_row, text="", foreground='gray')
+        self.scrape_status_label.pack(side=tk.LEFT, padx=(10, 0))
+
         # Min PA filter
         filter_frame = ttk.Frame(left_frame)
         filter_frame.pack(fill=tk.X, pady=(0, 5))
@@ -55,7 +96,14 @@ class LineupTab(ttk.Frame):
         mid_frame = ttk.Frame(top_frame)
         mid_frame.pack(side=tk.LEFT, padx=5)
 
-        ttk.Button(mid_frame, text="Add →", command=self._add_to_lineup, width=10).pack(pady=5)
+        ttk.Button(mid_frame, text="Add →", command=self._add_to_lineup, width=10).pack(pady=2)
+        ttk.Label(
+            mid_frame,
+            text="(Use Ctrl/Shift\nfor multi-select)",
+            font=('TkDefaultFont', 8),
+            foreground='gray',
+            justify='center'
+        ).pack(pady=2)
 
         # Right: Lineup builder
         right_frame = ttk.LabelFrame(top_frame, text="Batting Order (9 slots)", padding=10)
@@ -129,14 +177,35 @@ class LineupTab(ttk.Frame):
         self.player_list.load_players(filtered)
 
     def _add_to_lineup(self):
-        """Add selected player to lineup."""
-        player = self.player_list.get_selected()
-        if player is None:
-            messagebox.showwarning("No Selection", "Please select a player to add")
+        """Add selected player(s) to lineup."""
+        players = self.player_list.get_selected_multiple()
+        if not players:
+            messagebox.showwarning("No Selection", "Please select one or more players to add")
             return
 
-        if not self.lineup_builder.add_player(player):
-            messagebox.showwarning("Cannot Add", "Player is already in lineup or lineup is full")
+        added_count = 0
+        skipped_count = 0
+
+        for player in players:
+            if self.lineup_builder.add_player(player):
+                added_count += 1
+            else:
+                skipped_count += 1
+
+        # Show result message
+        if added_count > 0 and skipped_count > 0:
+            messagebox.showinfo(
+                "Partially Added",
+                f"Added {added_count} player(s). Skipped {skipped_count} (already in lineup or lineup full)."
+            )
+        elif added_count > 0:
+            # Success - no message needed for smooth UX
+            pass
+        else:
+            messagebox.showwarning(
+                "Cannot Add",
+                "Selected player(s) are already in lineup or lineup is full"
+            )
 
     def _auto_order(self):
         """Auto-order lineup by selected statistic."""
@@ -345,4 +414,174 @@ class LineupTab(ttk.Frame):
         lineup_names = [p.name for p in lineup]
         roster_names = [p.name for p in self.roster]
 
-        return ConstraintValidator.validate_all_constraints(self.constraints, lineup_names, roster_names)
+        # Check constraint validation
+        is_valid, messages = ConstraintValidator.validate_all_constraints(self.constraints, lineup_names, roster_names)
+
+        # Add position-based warnings (not errors, just warnings)
+        position_warnings = self._check_position_coverage(lineup)
+        if position_warnings:
+            messages.extend([f"Warning: {w}" for w in position_warnings])
+
+        return is_valid, messages
+
+    def _check_position_coverage(self, lineup: List[Optional[Player]]) -> List[str]:
+        """Check if lineup has adequate position coverage.
+
+        Args:
+            lineup: List of 9 players
+
+        Returns:
+            List of warning messages (empty if no warnings)
+        """
+        warnings = []
+
+        # Get positions in lineup
+        positions = [p.position for p in lineup if p is not None and p.position]
+
+        if not positions:
+            # No position data available
+            return warnings
+
+        # Define critical defensive positions
+        critical_positions = {
+            'C': 'Catcher',
+            '1B': 'First Base',
+            '2B': 'Second Base',
+            '3B': 'Third Base',
+            'SS': 'Shortstop'
+        }
+
+        # Check for critical positions
+        for pos_code, pos_name in critical_positions.items():
+            if not any(pos_code in pos for pos in positions):
+                warnings.append(f"No {pos_name} ({pos_code}) in lineup")
+
+        # Check for outfielders (OF, LF, CF, RF)
+        has_outfielder = any(
+            'OF' in pos or 'LF' in pos or 'CF' in pos or 'RF' in pos
+            for pos in positions
+        )
+        if not has_outfielder:
+            warnings.append("No outfielders in lineup")
+
+        return warnings
+
+    def _scrape_player(self):
+        """Scrape and add an individual player to the roster."""
+        player_name = self.player_name_var.get().strip()
+        if not player_name:
+            messagebox.showwarning("No Name", "Please enter a player name to search")
+            return
+
+        season = self.scrape_season_var.get()
+
+        self.scrape_btn.config(state='disabled')
+        self.scrape_status_label.config(text="Searching...", foreground='blue')
+        self.update()
+
+        try:
+            # Fetch player data
+            player_df = get_player_batting_stats(player_name, season)
+
+            if len(player_df) > 1:
+                # Multiple matches - let user choose
+                choice = self._select_from_multiple_players(player_df)
+                if choice is None:
+                    self.scrape_status_label.config(text="Cancelled", foreground='gray')
+                    return
+                player_df = player_df.iloc[[choice]]
+
+            # Prepare the stats
+            prepared = prepare_player_stats(player_df, min_pa=0)  # No minimum for individual adds
+
+            if prepared.empty:
+                messagebox.showwarning("No Data", "Player found but has insufficient stats")
+                self.scrape_status_label.config(text="Insufficient data", foreground='orange')
+                return
+
+            # Convert to Player object
+            new_players = prepare_roster(prepared)
+            if not new_players:
+                messagebox.showwarning("Error", "Failed to process player data")
+                self.scrape_status_label.config(text="Error", foreground='red')
+                return
+
+            new_player = new_players[0]
+
+            # Check if player already in roster
+            if any(p.name == new_player.name for p in self.roster):
+                messagebox.showinfo("Already Added", f"{new_player.name} is already in the roster")
+                self.scrape_status_label.config(text="Already in roster", foreground='orange')
+                return
+
+            # Add to roster
+            self.roster.append(new_player)
+
+            # Add to roster_df if it exists
+            if self.roster_df is not None:
+                self.roster_df = pd.concat([self.roster_df, prepared], ignore_index=True)
+
+            # Refresh the player list
+            self._apply_filter()
+
+            self.scrape_status_label.config(text=f"Added {new_player.name}!", foreground='green')
+            self.player_name_var.set("")  # Clear the entry
+
+            messagebox.showinfo("Success", f"Added {new_player.name} to roster")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to fetch player data:\n{str(e)}")
+            self.scrape_status_label.config(text="Error", foreground='red')
+
+        finally:
+            self.scrape_btn.config(state='normal')
+
+    def _select_from_multiple_players(self, players_df: pd.DataFrame) -> Optional[int]:
+        """Show dialog to select from multiple matching players.
+
+        Args:
+            players_df: DataFrame with multiple matching players
+
+        Returns:
+            Index of selected player, or None if cancelled
+        """
+        dialog = tk.Toplevel(self)
+        dialog.title("Multiple Players Found")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ttk.Label(dialog, text="Multiple players match your search. Please select one:").pack(padx=10, pady=10)
+
+        # Create listbox with player info
+        listbox = tk.Listbox(dialog, height=min(10, len(players_df)), width=60)
+        listbox.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
+
+        for idx, row in players_df.iterrows():
+            name = row.get('Name', 'Unknown')
+            team = row.get('Team', 'N/A')
+            pa = row.get('PA', 0)
+            avg = row.get('AVG', row.get('BA', 0))
+            pos = row.get('Pos', 'N/A')
+            display = f"{name} - {team} ({pos}) - {int(pa)} PA, {avg:.3f} AVG"
+            listbox.insert(tk.END, display)
+
+        result = [None]
+
+        def on_ok():
+            selection = listbox.curselection()
+            if selection:
+                result[0] = selection[0]
+            dialog.destroy()
+
+        def on_double_click(event):
+            on_ok()
+
+        listbox.bind('<Double-Button-1>', on_double_click)
+
+        btn_frame = ttk.Frame(dialog)
+        btn_frame.pack(pady=10)
+        ttk.Button(btn_frame, text="OK", command=on_ok).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+        self.wait_window(dialog)
+        return result[0]

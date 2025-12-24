@@ -47,7 +47,7 @@ class RunTab(ttk.Frame):
         # Stop button
         self.stop_btn = ttk.Button(
             control_frame,
-            text="⏹ Stop",
+            text="■ STOP",
             command=self._on_stop_clicked,
             state='disabled'
         )

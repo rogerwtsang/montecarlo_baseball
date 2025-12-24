@@ -24,6 +24,7 @@ class Player:
         hr: Number of home runs (if available)
         sb: Stolen bases (if available)
         cs: Caught stealing (if available)
+        position: Defensive position (if available)
         pa_probs: Calculated probabilities for each PA outcome
         hit_dist: Distribution of hit types given a hit occurred
     """
@@ -43,6 +44,9 @@ class Player:
     # Stolen base data
     sb: Optional[int] = None
     cs: Optional[int] = None
+
+    # Position
+    position: Optional[str] = None
 
     # Calculated probabilities
     pa_probs: Optional[Dict[str, float]] = None

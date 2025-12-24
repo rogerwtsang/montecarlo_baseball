@@ -1,9 +1,9 @@
 """Data acquisition using pybaseball."""
 
 import pandas as pd
-from typing import Optional
+from typing import Optional, List, Dict
 import pybaseball as pyb
-from pybaseball import batting_stats, team_batting
+from pybaseball import batting_stats, team_batting, playerid_lookup, statcast_batter
 
 
 # Enable cache to avoid repeated API calls
@@ -34,6 +34,54 @@ def get_team_batting_stats(team: str, season: int) -> pd.DataFrame:
     print(f"Found {len(team_stats)} players for {team}")
 
     return team_stats
+
+
+def search_player(last_name: str, first_name: Optional[str] = None) -> pd.DataFrame:
+    """Search for a player by name.
+
+    Args:
+        last_name: Player's last name
+        first_name: Player's first name (optional)
+
+    Returns:
+        DataFrame with matching players and their IDs
+    """
+    print(f"Searching for player: {first_name or ''} {last_name}".strip())
+
+    # Use playerid_lookup to find the player
+    results = playerid_lookup(last_name, first_name)
+
+    if results.empty:
+        raise ValueError(f"No players found matching '{first_name or ''} {last_name}'")
+
+    print(f"Found {len(results)} matching player(s)")
+    return results
+
+
+def get_player_batting_stats(player_name: str, season: int) -> pd.DataFrame:
+    """Fetch batting statistics for a specific player by searching all players.
+
+    Args:
+        player_name: Player name (will search in Name column)
+        season: Season year
+
+    Returns:
+        DataFrame with player batting statistics (single row)
+    """
+    print(f"Fetching {season} batting stats for {player_name}...")
+
+    # Get all batting stats for the season
+    stats = batting_stats(season, qual=1)  # qual=1 gets all players with at least 1 PA
+
+    # Search for player (case-insensitive partial match)
+    player_stats = stats[stats['Name'].str.contains(player_name, case=False, na=False)].copy()
+
+    if player_stats.empty:
+        raise ValueError(f"No data found for player '{player_name}' in {season}")
+
+    print(f"Found {len(player_stats)} matching player(s)")
+
+    return player_stats
 
 
 def get_league_batting_stats(season: int, min_pa: int = 100) -> pd.DataFrame:
@@ -119,6 +167,9 @@ def prepare_player_stats(df: pd.DataFrame, min_pa: int = 100) -> pd.DataFrame:
     df_clean = df[df['PA'] >= min_pa].copy()
 
     # Select and rename key columns
+    # NOTE: FanGraphs batting_stats does not include defensive position data.
+    # The 'Pos' column in FanGraphs is a positional adjustment value, not the position itself.
+    # Position data would need to come from Baseball Reference or manual entry.
     columns_needed = {
         'Name': 'name',
         'PA': 'pa',

@@ -68,7 +68,8 @@ class LineupBuilder(ttk.Frame):
                 self.listbox.itemconfig(i, foreground='gray')
             else:
                 lock_icon = "🔒 " if i in self.locked_positions else ""
-                text = f"{i+1}. {lock_icon}{player.name} ({player.ba:.3f}/{player.obp:.3f}/{player.slg:.3f})"
+                pos_display = f"[{player.position}] " if player.position else ""
+                text = f"{i+1}. {lock_icon}{pos_display}{player.name} ({player.ba:.3f}/{player.obp:.3f}/{player.slg:.3f})"
                 self.listbox.insert(tk.END, text)
 
                 # Highlight locked positions

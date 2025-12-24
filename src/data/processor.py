@@ -33,6 +33,7 @@ def create_player_from_stats(row: pd.Series) -> Player:
     doubles = int(row['doubles']) if 'doubles' in row and pd.notna(row['doubles']) else None
     triples = int(row['triples']) if 'triples' in row and pd.notna(row['triples']) else None
     hr = int(row['hr']) if 'hr' in row and pd.notna(row['hr']) else None
+    position = row['position'] if 'position' in row and pd.notna(row['position']) else None
 
     # Create player object first (without probabilities)
     player = Player(
@@ -47,7 +48,8 @@ def create_player_from_stats(row: pd.Series) -> Player:
         triples=triples,
         hr=hr,
         sb=sb,
-        cs=cs
+        cs=cs,
+        position=position
     )
 
     # Calculate probabilities (now passing player object)
