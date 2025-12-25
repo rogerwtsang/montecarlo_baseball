@@ -15,13 +15,14 @@ import numpy as np
 class RunTab(ttk.Frame):
     """Tab for running simulations."""
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, results_manager=None, **kwargs):
         """Initialize run tab."""
         super().__init__(parent, **kwargs)
 
         self.results: Optional[Dict] = None
         self.run_callback = None
         self.stop_callback = None
+        self.results_manager = results_manager
 
         self._create_widgets()
 
@@ -102,6 +103,7 @@ class RunTab(ttk.Frame):
         export_frame = ttk.Frame(main_frame)
         export_frame.pack(fill=tk.X, pady=(10, 0))
 
+        ttk.Button(export_frame, text="Save Results", command=self._save_results).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(export_frame, text="Export to CSV", command=self._export_csv).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(export_frame, text="Export to JSON", command=self._export_json).pack(side=tk.LEFT)
 
@@ -287,6 +289,37 @@ class RunTab(ttk.Frame):
 
         self.figure.tight_layout()
         self.canvas.draw()
+
+    def _save_results(self):
+        """Save results to results manager."""
+        if not self.results:
+            messagebox.showwarning("No Results", "No results to save")
+            return
+
+        if not self.results_manager:
+            messagebox.showerror("Error", "Results manager not available")
+            return
+
+        # Prompt for lineup name
+        from tkinter import simpledialog
+        lineup_name = simpledialog.askstring(
+            "Save Results",
+            "Enter a name for this lineup:",
+            parent=self
+        )
+
+        if not lineup_name:
+            return  # User cancelled
+
+        # Store result
+        try:
+            result_id = self.results_manager.store_result(lineup_name, self.results)
+            messagebox.showinfo(
+                "Success",
+                f"Results saved as '{lineup_name}'\nID: {result_id}"
+            )
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save results:\n{str(e)}")
 
     def _export_csv(self):
         """Export results to CSV."""

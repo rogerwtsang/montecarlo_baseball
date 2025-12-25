@@ -23,7 +23,7 @@ from src.gui.tabs import (
     OutputTab,
     RunTab
 )
-from src.gui.utils import SimulationRunner, ConfigManager
+from src.gui.utils import SimulationRunner, ConfigManager, ResultsManager
 
 
 class MonteCarloBaseballGUI:
@@ -38,6 +38,7 @@ class MonteCarloBaseballGUI:
         # Initialize managers
         self.sim_runner = SimulationRunner()
         self.config_manager = ConfigManager()
+        self.results_manager = ResultsManager(max_results=10)
 
         # Create UI
         self._create_menu()
@@ -82,7 +83,7 @@ class MonteCarloBaseballGUI:
         self.distribution_tab = DistributionTab(self.notebook)
         self.validation_tab = ValidationTab(self.notebook)
         self.output_tab = OutputTab(self.notebook)
-        self.run_tab = RunTab(self.notebook)
+        self.run_tab = RunTab(self.notebook, results_manager=self.results_manager)
 
         # Add tabs to notebook
         self.notebook.add(self.setup_tab, text="1. Setup")
@@ -247,10 +248,15 @@ class MonteCarloBaseballGUI:
         """Show about dialog."""
         about_text = """Monte Carlo Baseball Simulator
 
-Version 1.0.0
+Version 0.2.0 (Sprint 1 Complete)
 
 A sophisticated Monte Carlo simulation tool for baseball
-season projections and analysis.
+lineup optimization and season analysis.
+
+New in 0.2.0:
+• Results Manager for storing simulations
+• Save Results button in Run tab
+• Optimization framework (implementation in progress)
 
 Built with Python and Tkinter."""
 
