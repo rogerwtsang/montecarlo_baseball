@@ -7,10 +7,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### In Progress
-- Compare & Analyze tab for side-by-side lineup comparison (Sprint 2)
 - Position-level contribution tracking (Sprint 3)
 - Automated lineup optimization engine (Sprint 4-5)
-- Enhanced visualizations: box plots, violin plots (Sprint 6)
+- Enhanced visualizations: violin plots (Sprint 6)
+
+## [0.4.0] - 2025-01-07
+
+### Added - Sprint 2: Compare & Analyze Tab
+**Complete lineup comparison interface**
+
+- **Compare Tab** (`src/gui/tabs/compare_tab.py` - 739 lines):
+  - Split panel layout: selection panel (left) and comparison display (right)
+  - Results treeview with multi-select (2-4 lineups)
+  - Keyboard shortcuts: Ctrl+A to select all, Escape to clear
+  - Summary cards showing mean runs and difference from baseline
+  - Four comparison views in a tabbed notebook:
+    - **Overview**: Side-by-side statistics table with best/worst highlighting
+    - **Distributions**: Overlaid histograms with mean lines
+    - **Box Plots**: Box plot comparison across lineups
+    - **Detailed Stats**: Extended statistics (hits, walks, SB, CS, SF)
+  - Effect size analysis with Cohen's d for pairwise comparisons
+  - Validation of comparison data before display
+
+- **Summary Card Widget** (`src/gui/widgets/summary_card.py` - 161 lines):
+  - Displays lineup name, timestamp, mean runs
+  - Color-coded difference from baseline (green for +, red for -)
+  - Baseline indicator for first lineup
+
+- **Comparison Table Widget** (`src/gui/widgets/comparison_table.py` - 238 lines):
+  - Dynamic columns based on number of lineups (2-4)
+  - Automatic best (★) and worst (▼) value highlighting
+  - Support for regular values and confidence intervals
+  - Section headers for grouping statistics
+
+### Changed
+- Updated About dialog to version 0.4.0 with Sprint 2 features
+- GUI now includes "9. Compare" tab
+
+Stats: 3 new files, ~1,138 lines of code
 
 ## [0.3.0] - 2024-12-24
 

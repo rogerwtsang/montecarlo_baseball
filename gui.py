@@ -21,7 +21,8 @@ from src.gui.tabs import (
     DistributionTab,
     ValidationTab,
     OutputTab,
-    RunTab
+    RunTab,
+    CompareTab
 )
 from src.gui.utils import SimulationRunner, ConfigManager, ResultsManager
 
@@ -84,6 +85,7 @@ class MonteCarloBaseballGUI:
         self.validation_tab = ValidationTab(self.notebook)
         self.output_tab = OutputTab(self.notebook)
         self.run_tab = RunTab(self.notebook, results_manager=self.results_manager)
+        self.compare_tab = CompareTab(self.notebook, results_manager=self.results_manager)
 
         # Add tabs to notebook
         self.notebook.add(self.setup_tab, text="1. Setup")
@@ -94,6 +96,7 @@ class MonteCarloBaseballGUI:
         self.notebook.add(self.validation_tab, text="6. Validation")
         self.notebook.add(self.output_tab, text="7. Output")
         self.notebook.add(self.run_tab, text="8. Run")
+        self.notebook.add(self.compare_tab, text="9. Compare")
 
         # Initially disable lineup tab until data is loaded
         self.notebook.tab(1, state='disabled')
@@ -248,15 +251,20 @@ class MonteCarloBaseballGUI:
         """Show about dialog."""
         about_text = """Monte Carlo Baseball Simulator
 
-Version 0.2.0 (Sprint 1 Complete)
+Version 0.4.0 (Sprint 2 Complete)
 
 A sophisticated Monte Carlo simulation tool for baseball
 lineup optimization and season analysis.
 
-New in 0.2.0:
+New in 0.4.0:
+• Compare Tab for side-by-side lineup analysis
+• Summary cards with baseline comparison
+• Distribution and box plot visualizations
+• Effect size analysis (Cohen's d)
+
+Previous:
 • Results Manager for storing simulations
-• Save Results button in Run tab
-• Optimization framework (implementation in progress)
+• Model validation (1.6% error vs MLB data)
 
 Built with Python and Tkinter."""
 

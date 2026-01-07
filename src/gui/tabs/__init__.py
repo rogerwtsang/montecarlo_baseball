@@ -8,6 +8,7 @@ from .distribution_tab import DistributionTab
 from .validation_tab import ValidationTab
 from .output_tab import OutputTab
 from .run_tab import RunTab
+from .compare_tab import CompareTab
 
 __all__ = [
     'SetupTab',
@@ -18,4 +19,5 @@ __all__ = [
     'ValidationTab',
     'OutputTab',
     'RunTab',
+    'CompareTab',
 ]
